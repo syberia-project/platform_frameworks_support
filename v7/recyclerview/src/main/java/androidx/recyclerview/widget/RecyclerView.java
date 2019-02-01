@@ -164,10 +164,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
     static final boolean DEBUG = false;
 
-    private static final boolean OPTS_INPUT = true;
-
-    private static final double MOVE_TOUCH_SLOP = 0.3;
-
     static final boolean VERBOSE_TRACING = false;
 
     private static final int[]  NESTED_SCROLLING_ATTRS =
@@ -237,10 +233,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
      * continuous scrolling.
      */
     public static final int TOUCH_SLOP_DEFAULT = 0;
-
-    private boolean mIsFirstTouchMoveEvent = false;
-    private int mMoveAcceleration;
-    private int mNumTouchMoveEvent = 0;
 
     /**
      * Constant for use with {@link #setScrollingTouchSlop(int)}. Indicates
@@ -627,9 +619,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 ViewConfigurationCompat.getScaledHorizontalScrollFactor(vc, context);
         mScaledVerticalScrollFactor =
                 ViewConfigurationCompat.getScaledVerticalScrollFactor(vc, context);
-        if (OPTS_INPUT) {
-            mMoveAcceleration = (int)(mTouchSlop * MOVE_TOUCH_SLOP);
-        }
         mMinFlingVelocity = vc.getScaledMinimumFlingVelocity();
         mMaxFlingVelocity = vc.getScaledMaximumFlingVelocity();
         setWillNotDraw(getOverScrollMode() == View.OVER_SCROLL_NEVER);
@@ -1077,16 +1066,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 // fall-through
             case TOUCH_SLOP_DEFAULT:
                 mTouchSlop = vc.getScaledTouchSlop();
-                if (OPTS_INPUT) {
-                    mMoveAcceleration = (int)(mTouchSlop * MOVE_TOUCH_SLOP);
-                }
                 break;
 
             case TOUCH_SLOP_PAGING:
                 mTouchSlop = vc.getScaledPagingTouchSlop();
-                if (OPTS_INPUT) {
-                    mMoveAcceleration = (int)(mTouchSlop * MOVE_TOUCH_SLOP);
-                }
                 break;
         }
     }
@@ -2968,9 +2951,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 if (mIgnoreMotionEventTillDown) {
                     mIgnoreMotionEventTillDown = false;
                 }
@@ -2997,18 +2977,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                 break;
 
             case MotionEvent.ACTION_POINTER_DOWN:
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 mScrollPointerId = e.getPointerId(actionIndex);
                 mInitialTouchX = mLastTouchX = (int) (e.getX(actionIndex) + 0.5f);
                 mInitialTouchY = mLastTouchY = (int) (e.getY(actionIndex) + 0.5f);
                 break;
 
             case MotionEvent.ACTION_MOVE: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent++;
-                }
                 final int index = e.findPointerIndex(mScrollPointerId);
                 if (index < 0) {
                     Log.e(TAG, "Error processing scroll; pointer index for id "
@@ -3022,31 +2996,11 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                     final int dx = x - mInitialTouchX;
                     final int dy = y - mInitialTouchY;
                     boolean startScroll = false;
-
-                    boolean isFarEnoughX = false;
-                    boolean isFarEnoughY = false;
-                    int realTouchSlop;
-                    if (OPTS_INPUT) {
-                        if (mNumTouchMoveEvent == 1) {
-                            isFarEnoughX = Math.abs(dx) > mMoveAcceleration;
-                            isFarEnoughY = Math.abs(dy) > mMoveAcceleration;
-                            realTouchSlop = mMoveAcceleration;
-                        } else {
-                            isFarEnoughX = Math.abs(dx) > mTouchSlop;
-                            isFarEnoughY = Math.abs(dy) > mTouchSlop;
-                            realTouchSlop = mTouchSlop;
-                        }
-                    } else {
-                        isFarEnoughX = Math.abs(dx) > mTouchSlop;
-                        isFarEnoughY = Math.abs(dy) > mTouchSlop;
-                        realTouchSlop = mTouchSlop;
-                    }
-
-                    if (canScrollHorizontally && isFarEnoughX) {
+                    if (canScrollHorizontally && Math.abs(dx) > mTouchSlop) {
                         mLastTouchX = x;
                         startScroll = true;
                     }
-                    if (canScrollVertically && isFarEnoughY) {
+                    if (canScrollVertically && Math.abs(dy) > mTouchSlop) {
                         mLastTouchY = y;
                         startScroll = true;
                     }
@@ -3057,24 +3011,15 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             } break;
 
             case MotionEvent.ACTION_POINTER_UP: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 onPointerUp(e);
             } break;
 
             case MotionEvent.ACTION_UP: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 mVelocityTracker.clear();
                 stopNestedScroll(TYPE_TOUCH);
             } break;
 
             case MotionEvent.ACTION_CANCEL: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 cancelTouch();
             }
         }
@@ -3124,9 +3069,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
 
         switch (action) {
             case MotionEvent.ACTION_DOWN: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 mScrollPointerId = e.getPointerId(0);
                 mInitialTouchX = mLastTouchX = (int) (e.getX() + 0.5f);
                 mInitialTouchY = mLastTouchY = (int) (e.getY() + 0.5f);
@@ -3142,18 +3084,12 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             } break;
 
             case MotionEvent.ACTION_POINTER_DOWN: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 mScrollPointerId = e.getPointerId(actionIndex);
                 mInitialTouchX = mLastTouchX = (int) (e.getX(actionIndex) + 0.5f);
                 mInitialTouchY = mLastTouchY = (int) (e.getY(actionIndex) + 0.5f);
             } break;
 
             case MotionEvent.ACTION_MOVE: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent++;
-                }
                 final int index = e.findPointerIndex(mScrollPointerId);
                 if (index < 0) {
                     Log.e(TAG, "Error processing scroll; pointer index for id "
@@ -3175,40 +3111,21 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
                     mNestedOffsets[1] += mScrollOffset[1];
                 }
 
-                boolean isFarEnoughX = false;
-                boolean isFarEnoughY = false;
-                int realTouchSlop;
-                if (OPTS_INPUT) {
-                    if (mNumTouchMoveEvent == 1) {
-                        isFarEnoughX = Math.abs(dx) > mMoveAcceleration;
-                        isFarEnoughY = Math.abs(dy) > mMoveAcceleration;
-                        realTouchSlop = mMoveAcceleration;
-                    } else {
-                        isFarEnoughX = Math.abs(dx) > mTouchSlop;
-                        isFarEnoughY = Math.abs(dy) > mTouchSlop;
-                        realTouchSlop = mTouchSlop;
-                    }
-                } else {
-                    isFarEnoughX = Math.abs(dx) > mTouchSlop;
-                    isFarEnoughY = Math.abs(dy) > mTouchSlop;
-                    realTouchSlop = mTouchSlop;
-                }
-
                 if (mScrollState != SCROLL_STATE_DRAGGING) {
                     boolean startScroll = false;
-                    if (canScrollHorizontally && isFarEnoughX) {
+                    if (canScrollHorizontally && Math.abs(dx) > mTouchSlop) {
                         if (dx > 0) {
-                            dx -= realTouchSlop;
+                            dx -= mTouchSlop;
                         } else {
-                            dx += realTouchSlop;
+                            dx += mTouchSlop;
                         }
                         startScroll = true;
                     }
-                    if (canScrollVertically && isFarEnoughY) {
+                    if (canScrollVertically && Math.abs(dy) > mTouchSlop) {
                         if (dy > 0) {
-                            dy -= realTouchSlop;
+                            dy -= mTouchSlop;
                         } else {
-                            dy += realTouchSlop;
+                            dy += mTouchSlop;
                         }
                         startScroll = true;
                     }
@@ -3234,16 +3151,10 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             } break;
 
             case MotionEvent.ACTION_POINTER_UP: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 onPointerUp(e);
             } break;
 
             case MotionEvent.ACTION_UP: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 mVelocityTracker.addMovement(vtev);
                 eventAddedToVelocityTracker = true;
                 mVelocityTracker.computeCurrentVelocity(1000, mMaxFlingVelocity);
@@ -3258,9 +3169,6 @@ public class RecyclerView extends ViewGroup implements ScrollingView, NestedScro
             } break;
 
             case MotionEvent.ACTION_CANCEL: {
-                if (OPTS_INPUT) {
-                    mNumTouchMoveEvent = 0;
-                }
                 cancelTouch();
             } break;
         }
